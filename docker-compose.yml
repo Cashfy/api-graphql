@@ -1,0 +1,62 @@
+# v3 syntax
+version: '3'
+
+# Named volumes
+volumes:
+
+  # MySQL Data
+  cashfy-mysql-data:
+    driver: local
+
+  # Redis Data
+  cashfy-redis-data:
+    driver: local
+
+services:
+  # MySQL (5.7)
+  mysql:
+    image: mysql:5.7
+    container_name: cashfy-mysql
+    volumes:
+      - cashfy-mysql-data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=cashfy
+      - MYSQL_DATABASE=cashfy
+      - MYSQL_USER=cashfy
+      - MYSQL_PASSWORD=cashfy
+
+  # Redis
+  cache:
+    image: redis:4.0
+    container_name: cashfy-redis
+    command: --appendonly yes
+    volumes:
+      - cashfy-redis-data:/data
+    ports:
+      - "6379:6379"
+
+  # PHP (with Nginx)
+  app:
+    image: ambientum/php:7.3-nginx
+    container_name: cashfy-app
+    volumes:
+      - .:/var/www/app
+    ports:
+      - "8080:8080"
+      - "8083:8083"
+    links:
+      - mysql
+      - cache
+
+  # Laravel Queues
+  queue:
+    image: ambientum/php:7.3
+    container_name: cashfy-queue
+    command: php artisan queue:listen
+    volumes:
+      - .:/var/www/app
+    links:
+      - mysql
+      - cache
